@@ -1,0 +1,15 @@
+# docker compose up --build  →  http://localhost:3001
+services:
+  kavga:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:3001}
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}   # optional — search stays off without it
+    volumes:
+      - kavga-data:/data
+    restart: unless-stopped
+
+volumes:
+  kavga-data:

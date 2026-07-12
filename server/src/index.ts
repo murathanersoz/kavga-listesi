@@ -26,8 +26,13 @@ const hub = new Hub(store);
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
 
 /* ---------------- static client (production build) ---------------- */
-const clientDist = path.resolve(import.meta.dirname, "../../client/dist");
-if (existsSync(clientDist)) {
+// tsx runs from server/src; the compiled build runs from server/dist/server/src.
+const clientDist = [
+  process.env.CLIENT_DIST ?? "",
+  path.resolve(import.meta.dirname, "../../client/dist"),
+  path.resolve(import.meta.dirname, "../../../../client/dist"),
+].find((p) => p && existsSync(p));
+if (clientDist) {
   await app.register(fastifyStatic, { root: clientDist });
   app.setNotFoundHandler((req, reply) => {
     if (req.url.startsWith("/api") || req.url.startsWith("/ws")) {
