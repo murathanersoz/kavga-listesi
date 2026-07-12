@@ -13,6 +13,7 @@ import { Hub, type Client } from "./ws/hub.js";
 import { handleClientMsg } from "./ws/handlers.js";
 import { searchYoutube } from "./media/youtube.js";
 import { sanitizeText } from "./util/sanitize.js";
+import { computeRecap } from "./rooms/recap.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
 const PUBLIC_URL = process.env.PUBLIC_URL ?? `http://localhost:${PORT}`;
@@ -75,6 +76,15 @@ app.get<{ Params: { code: string } }>("/api/rooms/:code/qr.svg", async (req, rep
 });
 
 app.get("/api/config", async () => ({ searchEnabled: Boolean(YT_KEY) }));
+
+// Recap works for live AND ended rooms (ended rooms are excluded from roomByCode).
+app.get<{ Params: { code: string } }>("/api/rooms/:code/recap", async (req, reply) => {
+  const row = db
+    .prepare(`SELECT id, code FROM rooms WHERE code = ? ORDER BY created_at DESC LIMIT 1`)
+    .get(req.params.code.toUpperCase()) as { id: string; code: string } | undefined;
+  if (!row) return reply.code(404).send({ error: "Oda bulunamadı." });
+  return computeRecap(db, row.id, row.code);
+});
 
 app.get<{ Querystring: { q?: string } }>("/api/search", async (req, reply) => {
   if (!YT_KEY) return reply.code(503).send({ error: "Arama kapalı — link yapıştırma modunu kullan." });

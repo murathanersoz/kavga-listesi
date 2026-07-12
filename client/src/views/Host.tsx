@@ -8,6 +8,7 @@ import { useRoom } from "../lib/useRoom";
 import { fmtTime } from "../lib/state";
 import { setMuted } from "../lib/sounds";
 import { navigate } from "../App";
+import { RecapView } from "./Recap";
 
 declare global {
   interface Window {
@@ -122,6 +123,7 @@ function HostScreen({ code, hostKey }: { code: string; hostKey: string }) {
   if (!snap) {
     return <main className="grid min-h-dvh place-items-center text-mute">Bağlanıyor…</main>;
   }
+  if (snap.state === "ended") return <RecapView code={code} />;
 
   return (
     <main className="flex h-dvh flex-col gap-4 p-4 lg:flex-row">

@@ -1,8 +1,9 @@
 /** The phone controller: join, vote, fight. Budget-friendly — no heavy libs. */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Participant, Song } from "@kavga/shared";
 import { useRoom, useSmoothProgress } from "../lib/useRoom";
 import { fmtTime } from "../lib/state";
+import { RecapView } from "./Recap";
 
 export function Phone({ code }: { code: string }) {
   const [pid, setPid] = useState(() => localStorage.getItem(`kavga:pid:${code}`) ?? "");
@@ -85,16 +86,7 @@ function Controller({ code, pid }: { code: string; pid: string }) {
 
   if (!snap) return <main className="grid min-h-dvh place-items-center text-mute">Bağlanıyor…</main>;
 
-  if (snap.state === "ended")
-    return (
-      <main className="grid min-h-dvh place-items-center px-6 text-center">
-        <div>
-          <div className="text-4xl">🏁</div>
-          <h1 className="mt-2 text-2xl font-black">Parti bitti!</h1>
-          <p className="mt-1 text-mute">Kavga güzeldi. Bir dahakine!</p>
-        </div>
-      </main>
-    );
+  if (snap.state === "ended") return <RecapView code={code} />;
 
   const np = snap.nowPlaying;
   const iVotedSkip = snap.skip.voted.includes(pid);
@@ -330,6 +322,36 @@ function AddSheet({
   const sendMsg = send as (m: unknown) => void;
   const [url, setUrl] = useState("");
   const [useArmor, setUseArmor] = useState(false);
+  // Optional search — only when the server has a YOUTUBE_API_KEY (else link-paste only).
+  const [searchEnabled, setSearchEnabled] = useState(false);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<{ youtubeId: string; title: string; thumbnailUrl: string }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((c) => setSearchEnabled(Boolean(c.searchEnabled)))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!searchEnabled || query.trim().length < 2) {
+      setResults([]);
+      return;
+    }
+    const t = setTimeout(() => {
+      fetch("/api/search?q=" + encodeURIComponent(query))
+        .then((r) => (r.ok ? r.json() : { results: [] }))
+        .then((d) => setResults(d.results ?? []))
+        .catch(() => setResults([]));
+    }, 400); // debounce
+    return () => clearTimeout(t);
+  }, [query, searchEnabled]);
+
+  const addFromSearch = (id: string) => {
+    sendMsg({ type: "add_song", url: "https://www.youtube.com/watch?v=" + id, useArmor });
+    onClose();
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -346,7 +368,35 @@ function AddSheet({
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-line" />
         <h2 className="text-lg font-black">Şarkı ekle 🎵</h2>
-        <p className="mt-1 text-xs text-mute">YouTube linkini yapıştır — başlık ve kapak otomatik gelir.</p>
+        <p className="mt-1 text-xs text-mute">
+          {searchEnabled ? "Ara ya da YouTube linki yapıştır." : "YouTube linkini yapıştır — başlık ve kapak otomatik gelir."}
+        </p>
+        {searchEnabled && (
+          <div className="mt-3">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="🔍 Şarkı ara…"
+              aria-label="Şarkı ara"
+              className="w-full rounded-2xl border border-line bg-card-2 px-4 py-3 text-sm placeholder:text-mute/50 focus:border-fight focus:outline-none"
+            />
+            {results.length > 0 && (
+              <ul className="mt-2 max-h-56 space-y-1.5 overflow-y-auto">
+                {results.map((r) => (
+                  <li key={r.youtubeId}>
+                    <button
+                      onClick={() => addFromSearch(r.youtubeId)}
+                      className="flex w-full items-center gap-2.5 rounded-xl bg-card-2 p-2 text-left active:scale-[0.98]"
+                    >
+                      <img src={r.thumbnailUrl} alt="" className="h-9 w-16 rounded object-cover" />
+                      <span className="line-clamp-2 min-w-0 flex-1 text-xs font-semibold">{r.title}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
         <form onSubmit={submit} className="mt-3 flex flex-col gap-3">
           <input
             value={url}
