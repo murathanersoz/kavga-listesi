@@ -169,7 +169,7 @@ export class QueueEngine {
         )
         .run(songId, participantId, value, Date.now());
       this.trackLowestScore(songId);
-      return { tension: { kind: "vote", who: p.nickname, title: song.title, value } };
+      return { tension: { kind: "vote" as const, who: p.nickname, title: song.title, value } };
     })();
   }
 
@@ -190,7 +190,7 @@ export class QueueEngine {
         .prepare(`UPDATE participants SET super_votes_left = super_votes_left - 1 WHERE id = ?`)
         .run(participantId);
       this.trackLowestScore(songId);
-      return { tension: { kind: "super", who: p.nickname, title: song.title } };
+      return { tension: { kind: "super" as const, who: p.nickname, title: song.title } };
     })();
   }
 
@@ -213,7 +213,7 @@ export class QueueEngine {
 
       return {
         victimId: song.added_by,
-        tension: { kind: "veto", who: p.nickname, victim: song.nickname, title: song.title },
+        tension: { kind: "veto" as const, who: p.nickname, victim: song.nickname, title: song.title },
       };
     })();
   }
@@ -360,6 +360,13 @@ export class QueueEngine {
       armor: Boolean(r.armor),
       score: r.score,
     };
+  }
+
+  /** The authoritative host player reports duration once it knows it. */
+  setDuration(songId: string, durationS: number): void {
+    this.db
+      .prepare(`UPDATE songs SET duration_s = ? WHERE id = ? AND duration_s IS NULL`)
+      .run(Math.round(durationS), songId);
   }
 
   /** Comeback tracking for the recap: remember each song's lowest score. */
