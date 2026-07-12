@@ -10,6 +10,16 @@ pnpm install && pnpm dev        # server :3001 + client :5173
 docker compose up --build       # http://localhost:3001
 ```
 
+## Ekran görüntüleri
+
+*Çalışan uygulamadan çekildi (seed edilmiş demo odası) — mockup değil.*
+
+| 🖥️ Hoparlör ekranı (lobi + QR) | 📱 Telefon kumandası |
+|---|---|
+| ![Host lobi](docs/screenshots/host-lobby.png) | ![Telefon kuyruğu](docs/screenshots/phone-queue.png) |
+
+![Giriş](docs/screenshots/landing.png)
+
 ## Nasıl oynanır
 
 | Silah | Etki | Adet |
